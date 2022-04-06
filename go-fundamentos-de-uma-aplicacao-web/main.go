@@ -9,7 +9,7 @@ import (
 )
 
 func conectaComBancoDeDados() *sql.DB {
-	db, err := sql.Open("mysql", "user:password@/alura_loja")
+	db, err := sql.Open("mysql", "aluno:password@/alura_loja")
 	if err != nil {
 		panic(err)
 	}
@@ -26,18 +26,39 @@ type Produto struct {
 var temp = template.Must(template.ParseGlob("templates/*.html"))
 
 func main() {
-	db := conectaComBancoDeDados()
-	defer db.Close()
 	http.HandleFunc("/", index)
 	http.ListenAndServe(":8000", nil)
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	produtos := []Produto{
-		{Nome: "Camisa", Descricao: "Azul, social", Preco: 39, Quantidade: 15},
-		{"Tenis", "Nike air", 150, 6},
-		{"Fone", "Multilaser", 70, 45},
+	db := conectaComBancoDeDados()
+
+	selectDeTodosOsProdutos, err := db.Query("select * from produtos")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	p := Produto{}
+	produtos := []Produto{}
+
+	for selectDeTodosOsProdutos.Next() {
+		var id, quantidade int
+		var nome, descricao string
+		var preco float64
+
+		err = selectDeTodosOsProdutos.Scan(&id, &nome, &descricao, &preco, &quantidade)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		p.Nome = nome
+		p.Descricao = descricao
+		p.Preco = preco
+		p.Quantidade = quantidade
+
+		produtos = append(produtos, p)
 	}
 
 	temp.ExecuteTemplate(w, "Index", produtos)
+	defer db.Close()
 }
